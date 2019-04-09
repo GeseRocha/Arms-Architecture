@@ -34,6 +34,9 @@ mempc = []
 reg = []
 instructionString = []
 
+#file names
+outputFileName = ''
+inputFileName = ''
 
 def bin2StrSpacedRandR(s):
     spacedStr = s[0:11] + " " + s[11:16] + " " + s[16:22] + " " + s[22:27] + " " + s[27:32]
@@ -126,6 +129,8 @@ class Dissasembler:
         global opcode
         global mempc
         global instructionString
+        global inputFileName
+        global outputFileName
 
         pc = 0
 
@@ -134,7 +139,7 @@ class Dissasembler:
                 inputFileName = sys.argv[i + 1]
                 print(inputFileName)
             elif (sys.argv[i] == '-o' and i < (len(sys.argv) - 1)):
-                outputFileName = sys.argv[i + 1] + "_dis.txt"
+                outputFileName = sys.argv[i + 1]
 
 
 
@@ -154,7 +159,7 @@ class Dissasembler:
                 arg1Str.append("\tR" + str(arg3[i]))
                 arg2Str.append(", R" + str(arg1[i]))
                 arg3Str.append(", R" + str(arg2[i]))
-                instructionString = opcodeStr[i] + arg1Str[i] + arg2Str[i] + arg3Str[i]
+                instructionString.append(opcodeStr[i] + arg1Str[i] + arg2Str[i] + arg3Str[i])
                 instrSpaced.append(bin2StrSpacedRandR(instructions[i]))
                 mempc.append(96 + (pc*4))
 
@@ -167,7 +172,7 @@ class Dissasembler:
                 arg1Str.append("\tR" + str(arg3[i]))
                 arg2Str.append(", R" + str(arg1[i]))
                 arg3Str.append(", R" + str(arg2[i]))
-                instructionString = opcodeStr[i] + arg1Str[i] + arg2Str[i] + arg3Str[i]
+                instructionString.append(opcodeStr[i] + arg1Str[i] + arg2Str[i] + arg3Str[i])
                 instrSpaced.append(bin2StrSpacedRandR(instructions[i]))
                 mempc.append(96 + (pc * 4))
 
@@ -179,7 +184,7 @@ class Dissasembler:
                 arg1Str.append("\tR" + str(arg3[i]))
                 arg2Str.append(", R" + str(arg1[i]))
                 arg3Str.append(", R" + str(arg2[i]))
-                instructionString = opcodeStr[i] + arg1Str[i] + arg2Str[i] + arg3Str[i]
+                instructionString.append(opcodeStr[i] + arg1Str[i] + arg2Str[i] + arg3Str[i])
                 instrSpaced.append(bin2StrSpacedRandR(instructions[i]))
                 mempc.append(96 + (pc * 4))
 
@@ -191,7 +196,7 @@ class Dissasembler:
                 arg1Str.append("\tR" + str(arg3[i]))
                 arg2Str.append(", R" + str(arg1[i]))
                 arg3Str.append(", R" + str(arg2[i]))
-                instructionString = opcodeStr[i] + arg1Str[i] + arg2Str[i] + arg3Str[i]
+                instructionString.append(opcodeStr[i] + arg1Str[i] + arg2Str[i] + arg3Str[i])
                 instrSpaced.append(bin2StrSpacedRandR(instructions[i]))
                 mempc.append(96 + (pc * 4))
 
@@ -204,7 +209,7 @@ class Dissasembler:
                 arg1Str.append("\tR" + str(arg3[i]))
                 arg2Str.append(", R" + str(arg1[i]))
                 arg3Str.append(", #" + str(arg2[i]))
-                instructionString = opcodeStr[i] + arg1Str[i] + arg2Str[i] + arg3Str[i]
+                instructionString.append(opcodeStr[i] + arg1Str[i] + arg2Str[i] + arg3Str[i])
                 instrSpaced.append(bin2StringSpacedI(instructions[i]))
                 mempc.append(96 + (pc * 4))
 
@@ -216,7 +221,7 @@ class Dissasembler:
                 arg1Str.append("\tR" + str(arg3[i]))
                 arg2Str.append(", R" + str(arg1[i]))
                 arg3Str.append(", #" + str(arg2[i]))
-                instructionString = opcodeStr[i] + arg1Str[i] + arg2Str[i] + arg3Str[i]
+                instructionString.append(opcodeStr[i] + arg1Str[i] + arg2Str[i] + arg3Str[i])
                 instrSpaced.append(bin2StringSpacedI(instructions[i]))
                 mempc.append(96 + (pc * 4))
 
@@ -228,7 +233,7 @@ class Dissasembler:
                 arg1Str.append("\tR" + str(arg1[i]))
                 arg2Str.append(", [R" + str(arg2[i]))
                 arg3Str.append(", #" + str(arg3[i]) + "]")
-                instructionString = opcodeStr[i] + arg1Str[i] + arg2Str[i] + arg3Str[i]
+                instructionString.append(opcodeStr[i] + arg1Str[i] + arg2Str[i] + arg3Str[i])
                 instrSpaced.append(bin2StrSpacedRandD(instructions[i]))
                 mempc.append(96 + (pc * 4))
 
@@ -240,7 +245,7 @@ class Dissasembler:
                 arg1Str.append("\tR" + str(arg1[i]))
                 arg2Str.append(", [R" + str(arg2[i]))
                 arg3Str.append(", #" + str(arg3[i]) + "]")
-                instructionString = opcodeStr[i] + arg1Str[i] + arg2Str[i] + arg3Str[i]
+                instructionString.append(opcodeStr[i] + arg1Str[i] + arg2Str[i] + arg3Str[i])
                 instrSpaced.append(bin2StrSpacedRandD(instructions[i]))
                 mempc.append(96 + (pc * 4))
 
@@ -251,7 +256,7 @@ class Dissasembler:
                 arg1Str.append("")
                 arg2Str.append("")
                 arg3Str.append("")
-                instructionString = opcodeStr[i] + arg1Str[i] + arg2Str[i] + arg3Str[i]
+                instructionString.append(opcodeStr[i] + arg1Str[i] + arg2Str[i] + arg3Str[i])
                 instrSpaced.append(bin2StringSpaced(instructions[i]))
                 mempc.append(96 + (pc * 4))
 
@@ -263,7 +268,7 @@ class Dissasembler:
                 arg1Str.append("\tR" + str(arg3[i]))
                 arg2Str.append(", R" + str(arg2[i]))
                 arg3Str.append(", #" + str(arg1[i]))
-                instructionString = opcodeStr[i] + arg1Str[i] + arg2Str[i] + arg3Str[i]
+                instructionString.append(opcodeStr[i] + arg1Str[i] + arg2Str[i] + arg3Str[i])
                 instrSpaced.append(bin2StrSpacedRandD(instructions[i]))
                 mempc.append(96 + (pc * 4))
 
@@ -275,7 +280,7 @@ class Dissasembler:
                 arg1Str.append("\tR" + str(arg3[i]))
                 arg2Str.append(", R" + str(arg2[i]))
                 arg3Str.append(", #" + str(arg1[i]))
-                instructionString = opcodeStr[i] + arg1Str[i] + arg2Str[i] + arg3Str[i]
+                instructionString.append(opcodeStr[i] + arg1Str[i] + arg2Str[i] + arg3Str[i])
                 instrSpaced.append(bin2StrSpacedRandD(instructions[i]))
                 mempc.append(96 + (pc * 4))
 
@@ -287,7 +292,7 @@ class Dissasembler:
                 arg1Str.append("\t#" + str(imm32Bit2ComplementToDec(immBitTo32BitConverter(arg1[i], 26))))
                 arg2Str.append('')
                 arg3Str.append('')
-                instructionString = opcodeStr[i] + arg1Str[i] + arg2Str[i] + arg3Str[i]
+                instructionString.append(opcodeStr[i] + arg1Str[i] + arg2Str[i] + arg3Str[i])
                 instrSpaced.append(bin2StringSpacedB(instructions[i]))
                 mempc.append(96 + (pc * 4))
 
@@ -299,7 +304,7 @@ class Dissasembler:
                 arg1Str.append("\tR" + str(arg2[i]))
                 arg2Str.append(", #" + str(imm32Bit2ComplementToDec(immBitTo32BitConverter(arg1[i], 19))))
                 arg3Str.append("")
-                instructionString = opcodeStr[i] + arg1Str[i] + arg2Str[i] + arg3Str[i]
+                instructionString.append(opcodeStr[i] + arg1Str[i] + arg2Str[i] + arg3Str[i])
                 instrSpaced.append(bin2StringSpacedCB(instructions[i]))
                 mempc.append(96 + (pc * 4))
 
@@ -311,7 +316,7 @@ class Dissasembler:
                 arg1Str.append("\tR" + str(arg2[i]))
                 arg2Str.append(", #" + str(imm32Bit2ComplementToDec(immBitTo32BitConverter(arg1[i], 19))))
                 arg3Str.append("")
-                instructionString = opcodeStr[i] + arg1Str[i] + arg2Str[i] + arg3Str[i]
+                instructionString.append(opcodeStr[i] + arg1Str[i] + arg2Str[i] + arg3Str[i])
                 instrSpaced.append(bin2StringSpacedCB(instructions[i]))
                 mempc.append(96 + (pc * 4))
 
@@ -324,7 +329,7 @@ class Dissasembler:
                 arg1Str.append("\tR" + str(arg3[i]))
                 arg2Str.append(", " + str(arg2[i]))
                 arg3Str.append(", LSL " + str(arg1[i]))
-                instructionString = opcodeStr[i] + arg1Str[i] + arg2Str[i] + arg3Str[i]
+                instructionString.append(opcodeStr[i] + arg1Str[i] + arg2Str[i] + arg3Str[i])
                 instrSpaced.append(bin2StringSpacedIM(instructions[i]))
                 mempc.append(96 + (pc * 4))
 
@@ -336,7 +341,7 @@ class Dissasembler:
                 arg1Str.append("\tR" + str(arg3[i]))
                 arg2Str.append(", " + str(arg2[i]))
                 arg3Str.append(", LSL " + str(arg1[i]*16))
-                instructionString = opcodeStr[i] + arg1Str[i] + arg2Str[i] + arg3Str[i]
+                instructionString.append(opcodeStr[i] + arg1Str[i] + arg2Str[i] + arg3Str[i])
                 instrSpaced.append(bin2StringSpacedIM(instructions[i]))
                 mempc.append(96 + (pc * 4))
 
@@ -348,7 +353,7 @@ class Dissasembler:
                 arg1Str.append("\tR" + str(arg3[i]))
                 arg2Str.append(", R" + str(arg1[i]))
                 arg3Str.append(", R" + str(arg2[i]))
-                instructionString = opcodeStr[i] + arg1Str[i] + arg2Str[i] + arg3Str[i]
+                instructionString.append(opcodeStr[i] + arg1Str[i] + arg2Str[i] + arg3Str[i])
                 instrSpaced.append(bin2StrSpacedRandR(instructions[i]))
                 mempc.append(96 + (pc * 4))
 
@@ -360,7 +365,7 @@ class Dissasembler:
                 arg1Str.append("\tR" + str(arg3[i]))
                 arg2Str.append(", R" + str(arg1[i]))
                 arg3Str.append(", R" + str(arg2[i]))
-                instructionString = opcodeStr[i] + arg1Str[i] + arg2Str[i] + arg3Str[i]
+                instructionString.append(opcodeStr[i] + arg1Str[i] + arg2Str[i] + arg3Str[i])
                 instrSpaced.append(bin2StrSpacedRandR(instructions[i]))
                 mempc.append(96 + (pc * 4))
 
@@ -372,7 +377,7 @@ class Dissasembler:
                 arg1Str.append("")
                 arg2Str.append("")
                 arg3Str.append("")
-                instructionString = opcodeStr[i] + arg1Str[i] + arg2Str[i] + arg3Str[i]
+                instructionString.append(opcodeStr[i] + arg1Str[i] + arg2Str[i] + arg3Str[i])
                 instrSpaced.append(bin2StringSpaced(instructions[i]))
                 mempc.append(96 + (pc * 4))
                 pc += 1
@@ -386,14 +391,11 @@ class Dissasembler:
             mempc.append(96 + (pc * 4))
             pc += 1
 
-        with open(outputFileName, 'w') as f:
+        with open(outputFileName + "_dis.txt", 'w') as f:
             for i in range(len(mempc) - len(data)):
                 f.write((instrSpaced)[i])
                 f.write("\t"+str(mempc[i])+"\t")
-                f.write((opcodeStr)[i])
-                f.write((arg1Str)[i])
-                f.write((arg2Str)[i])
-                f.write((arg3Str)[i])
+                f.write(instructionString[i])
                 f.write("\n")
 
             for i in range(len(data)):
@@ -426,13 +428,17 @@ class Simulator():
         global mempc
         global reg
 
+        # Starts a local mempc
         local_mempc = mempc[0]
         cycle = 1
 
+        # Initializes all 32 registers to 0
         reg = [0]*32
-        print (reg)
 
-        is_looping =True
+        startDataAddress = mempc[len(mempc)-len(data)]
+        endDataAddress = mempc[-1]
+
+        is_looping = True
 
         while True:
 
@@ -440,7 +446,7 @@ class Simulator():
 
                 if opcode[i] == 1112:
                     reg[arg3[i]] = reg[arg1[i]] + reg[arg3[i]]
-                    printCycle(cycle, mempc[i], instructionString[i])
+                    printCycle(cycle, mempc[i], instructionString[i], startDataAddress, endDataAddress)
                 elif opcode[i] == 2038:
                     is_looping = False
                     print("Break")
@@ -449,21 +455,34 @@ class Simulator():
                 break
 
 
+def printCycle(cycle, mempc, instruction_string, startDataAddress, endDataAddress):
 
-def printCycle(cycle, mempc, instruction_string):
+    with open(outputFileName + "_sim.txt", 'w') as f:
+        f.write("=" * 20 + '\n')
+        f.write("cycle:"+ str(cycle) + '\t' + str(mempc) + '\t' + instruction_string + '\n\n')
+        f.write("registers:" + '\n')
+        f.write("r00:" + "\t" + str(reg[0]) + "\t" + str(reg[1]) + "\t" + str(reg[2]) + "\t" + str(reg[3]) + "\t"
+                + str(reg[4]) + "\t" + str(reg[5]) + "\t" + str(reg[6]) + "\t" + str(reg[7]) + "\n")
+        f.write("r08:" + "\t" + str(reg[8]) + "\t" + str(reg[9]) + "\t" + str(reg[10]) + "\t" + str(reg[11]) + "\t"
+                + str(reg[12]) + "\t" + str(reg[13]) + "\t" + str(reg[14]) + "\t" + str(reg[15]) + "\n")
+        f.write("r16:" + "\t" + str(reg[16]) + "\t" + str(reg[17]) + "\t" + str(reg[18]) + "\t" + str(reg[19]) + "\t"
+                + str(reg[20]) + "\t" + str(reg[21]) + "\t" + str(reg[22]) + "\t" + str(reg[23]) + "\n")
+        f.write("r24:" + "\t" + str(reg[24]) + "\t" + str(reg[25]) + "\t" + str(reg[26]) + "\t" + str(reg[27]) + "\t"
+                + str(reg[28]) + "\t" + str(reg[29]) + "\t" + str(reg[30]) + "\t" + str(reg[31]) + "\n\n")
+        f.write("data:")
 
-    print "=" * 20 + '\n'
-    print str(cycle) + '\t' + str(mempc) + '\t' + instruction_string + '\n\n'
-    print "registers:" + '\n'
-    print "r00:" + "\t" + reg[0] + "\t" + reg[1] + "\t" + reg[2] + "\t" + reg[3] + "\t" + reg[4] + "\t" + reg[5] + "\t" \
-          + reg[6] + "\t" + reg[7] + "\n"
-    print "r08:" + "\t" + reg[8] + "\t" + reg[9] + "\t" + reg[10] + "\t" + reg[11] + "\t" + reg[12] + "\t" + reg[13] + "\t" \
-          + reg[14] + "\t" + reg[15] + "\n"
-    print "r16:" + "\t" + reg[16] + "\t" + reg[17] + "\t" + reg[18] + "\t" + reg[19] + "\t" + reg[20] + "\t" + reg[21] + "\t" \
-          + reg[22] + "\t" + reg[23] + "\n"
-    print "r24:" + "\t" + reg[24] + "\t" + reg[25] + "\t" + reg[26] + "\t" + reg[27] + "\t" + reg[28] + "\t" + reg[29] + "\t" \
-          + reg[30] + "\t" + reg[31] + "\n\n"
-    print "data:"
+        for i in range(len(data)):
+
+            if i % 7 != 0:
+                f.write(str(data[i]) + "\t")
+            else:
+                f.write("\n" + str(startDataAddress) + ":\t" + str(data[i]) + "\t")
+
+            startDataAddress += 4 * 8
+
+
+
+
 
 
 

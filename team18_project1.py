@@ -436,28 +436,75 @@ class Simulator():
         reg = [0]*32
 
         startDataAddress = mempc[len(mempc)-len(data)]
-        endDataAddress = mempc[-1]
+
 
         is_looping = True
 
         while True:
 
+            for i in range(len(mempc)):
+                if local_mempc == mempc[i]:
+                    instruction = opcode[i]
+                    index = i
+
             for i in range(len(mempc) - len(data)):
 
-                if opcode[i] == 1112:
-                    reg[arg3[i]] = reg[arg1[i]] + reg[arg3[i]]
-                    printCycle(cycle, mempc[i], instructionString[i], startDataAddress, endDataAddress)
-                elif opcode[i] == 2038:
+                # ADD
+                if instruction == 1112:
+                    reg[arg3[i]] = reg[arg1[i]] + reg[arg2[i]]
+                    printCycle(cycle, mempc[i], instructionString[i], startDataAddress)
+                    local_mempc += 4
+                    break
+                # ADDI
+                if 1160 <= instruction <= 1161:
+                    reg[arg3[i]] = reg[arg1[i]] + reg[arg2[i]]
+                    printCycle(cycle, mempc[i], instructionString[i], startDataAddress)
+                    local_mempc += 4
+                    break
+                # SUBI
+                if 1672 <= instruction <= 1673:
+                    reg[arg3[i]] = reg[arg1[i]] - reg[arg2[i]]
+                    printCycle(cycle, mempc[i], instructionString[i], startDataAddress)
+                    local_mempc += 4
+                    break
+                # B
+                if 160 <= instruction <= 191:
+                    printCycle(cycle, mempc[i], instructionString[i], startDataAddress)
+                    local_mempc += arg1[i] * 4
+                    break
+                # CBZ
+                if 1440 <= instruction <= 1447:
+                    printCycle(cycle, mempc[i], instructionString[i], startDataAddress)
+                    if reg[arg2[i]] == 0:
+                        local_mempc += arg1[i] * 4
+                    else:
+                        local_mempc += 4
+                    break
+                # CBNZ
+                if 1448 <= instruction <= 1455:
+                    printCycle(cycle, mempc[i], instructionString[i], startDataAddress)
+                    if reg[arg2[i]] != 0:
+                        local_mempc += arg1[i] * 4
+                    else:
+                        local_mempc += 4
+                    break
+                # BREAK
+                elif instruction == 2038:
                     is_looping = False
+                    printCycle(cycle, mempc[i], instructionString[i], startDataAddress)
                     print("Break")
+                    break
+
+            cycle += 1
 
             if not is_looping:
                 break
 
 
-def printCycle(cycle, mempc, instruction_string, startDataAddress, endDataAddress):
+def printCycle(cycle, mempc, instruction_string, startDataAddress):
 
     with open(outputFileName + "_sim.txt", 'w') as f:
+        print ("File open")
         f.write("=" * 20 + '\n')
         f.write("cycle:"+ str(cycle) + '\t' + str(mempc) + '\t' + instruction_string + '\n\n')
         f.write("registers:" + '\n')

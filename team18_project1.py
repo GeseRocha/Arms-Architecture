@@ -447,53 +447,53 @@ class Simulator():
                     instruction = opcode[i]
                     index = i
 
-            for i in range(len(mempc) - len(data)):
 
-                # ADD
-                if instruction == 1112:
-                    reg[arg3[i]] = reg[arg1[i]] + reg[arg2[i]]
-                    printCycle(cycle, mempc[i], instructionString[i], startDataAddress)
+
+            # ADD
+            if instruction == 1112:
+                reg[arg3[index]] = reg[arg1[index]] + reg[arg2[index]]
+                printCycle(cycle, mempc[index], instructionString[index], startDataAddress)
+                local_mempc += 4
+                #break
+            # ADDI
+            if 1160 <= instruction <= 1161:
+                reg[arg3[index]] = reg[arg1[index]] + arg2[index]
+                printCycle(cycle, mempc[index], instructionString[index], startDataAddress)
+                local_mempc += 4
+                #break
+            # SUBI
+            if 1672 <= instruction <= 1673:
+                reg[arg3[index]] = reg[arg1[index]] - arg2[index]
+                printCycle(cycle, mempc[index], instructionString[index], startDataAddress)
+                local_mempc += 4
+                #break
+            # B
+            if 160 <= instruction <= 191:
+                printCycle(cycle, mempc[index], instructionString[index], startDataAddress)
+                local_mempc += arg1[index] * 4
+                #break
+            # CBZ
+            if 1440 <= instruction <= 1447:
+                printCycle(cycle, mempc[index], instructionString[index], startDataAddress)
+                if reg[arg2[index]] == 0:
+                    local_mempc += arg1[index] * 4
+                else:
                     local_mempc += 4
-                    break
-                # ADDI
-                if 1160 <= instruction <= 1161:
-                    reg[arg3[i]] = reg[arg1[i]] + reg[arg2[i]]
-                    printCycle(cycle, mempc[i], instructionString[i], startDataAddress)
+                #break
+            # CBNZ
+            if 1448 <= instruction <= 1455:
+                printCycle(cycle, mempc[index], instructionString[index], startDataAddress)
+                if reg[arg2[index]] != 0:
+                    local_mempc += arg1[index] * 4
+                else:
                     local_mempc += 4
-                    break
-                # SUBI
-                if 1672 <= instruction <= 1673:
-                    reg[arg3[i]] = reg[arg1[i]] - reg[arg2[i]]
-                    printCycle(cycle, mempc[i], instructionString[i], startDataAddress)
-                    local_mempc += 4
-                    break
-                # B
-                if 160 <= instruction <= 191:
-                    printCycle(cycle, mempc[i], instructionString[i], startDataAddress)
-                    local_mempc += arg1[i] * 4
-                    break
-                # CBZ
-                if 1440 <= instruction <= 1447:
-                    printCycle(cycle, mempc[i], instructionString[i], startDataAddress)
-                    if reg[arg2[i]] == 0:
-                        local_mempc += arg1[i] * 4
-                    else:
-                        local_mempc += 4
-                    break
-                # CBNZ
-                if 1448 <= instruction <= 1455:
-                    printCycle(cycle, mempc[i], instructionString[i], startDataAddress)
-                    if reg[arg2[i]] != 0:
-                        local_mempc += arg1[i] * 4
-                    else:
-                        local_mempc += 4
-                    break
-                # BREAK
-                elif instruction == 2038:
-                    is_looping = False
-                    printCycle(cycle, mempc[i], instructionString[i], startDataAddress)
-                    print("Break")
-                    break
+                #break
+            # BREAK
+            elif instruction == 2038:
+                is_looping = False
+                printCycle(cycle, mempc[index], instructionString[index], startDataAddress)
+                print("Break")
+                #break
 
             cycle += 1
 
@@ -503,29 +503,37 @@ class Simulator():
 
 def printCycle(cycle, mempc, instruction_string, startDataAddress):
 
-    with open(outputFileName + "_sim.txt", 'w') as f:
-        print ("File open")
-        f.write("=" * 20 + '\n')
-        f.write("cycle:"+ str(cycle) + '\t' + str(mempc) + '\t' + instruction_string + '\n\n')
-        f.write("registers:" + '\n')
-        f.write("r00:" + "\t" + str(reg[0]) + "\t" + str(reg[1]) + "\t" + str(reg[2]) + "\t" + str(reg[3]) + "\t"
-                + str(reg[4]) + "\t" + str(reg[5]) + "\t" + str(reg[6]) + "\t" + str(reg[7]) + "\n")
-        f.write("r08:" + "\t" + str(reg[8]) + "\t" + str(reg[9]) + "\t" + str(reg[10]) + "\t" + str(reg[11]) + "\t"
-                + str(reg[12]) + "\t" + str(reg[13]) + "\t" + str(reg[14]) + "\t" + str(reg[15]) + "\n")
-        f.write("r16:" + "\t" + str(reg[16]) + "\t" + str(reg[17]) + "\t" + str(reg[18]) + "\t" + str(reg[19]) + "\t"
-                + str(reg[20]) + "\t" + str(reg[21]) + "\t" + str(reg[22]) + "\t" + str(reg[23]) + "\n")
-        f.write("r24:" + "\t" + str(reg[24]) + "\t" + str(reg[25]) + "\t" + str(reg[26]) + "\t" + str(reg[27]) + "\t"
-                + str(reg[28]) + "\t" + str(reg[29]) + "\t" + str(reg[30]) + "\t" + str(reg[31]) + "\n\n")
-        f.write("data:")
+    if cycle == 1:
+        f = open(outputFileName + "_sim.txt", 'w')
+    else:
+        f = open(outputFileName + "_sim.txt", 'a')
 
-        for i in range(len(data)):
+    #with open(outputFileName + "_sim.txt", 'w+') as f:
+    print ("File open")
+    f.write("=" * 20 + '\n')
+    f.write("cycle:"+ str(cycle) + '\t' + str(mempc) + '\t' + instruction_string + '\n\n')
+    f.write("registers:" + '\n')
+    f.write("r00:" + "\t" + str(reg[0]) + "\t" + str(reg[1]) + "\t" + str(reg[2]) + "\t" + str(reg[3]) + "\t"
+            + str(reg[4]) + "\t" + str(reg[5]) + "\t" + str(reg[6]) + "\t" + str(reg[7]) + "\n")
+    f.write("r08:" + "\t" + str(reg[8]) + "\t" + str(reg[9]) + "\t" + str(reg[10]) + "\t" + str(reg[11]) + "\t"
+            + str(reg[12]) + "\t" + str(reg[13]) + "\t" + str(reg[14]) + "\t" + str(reg[15]) + "\n")
+    f.write("r16:" + "\t" + str(reg[16]) + "\t" + str(reg[17]) + "\t" + str(reg[18]) + "\t" + str(reg[19]) + "\t"
+            + str(reg[20]) + "\t" + str(reg[21]) + "\t" + str(reg[22]) + "\t" + str(reg[23]) + "\n")
+    f.write("r24:" + "\t" + str(reg[24]) + "\t" + str(reg[25]) + "\t" + str(reg[26]) + "\t" + str(reg[27]) + "\t"
+            + str(reg[28]) + "\t" + str(reg[29]) + "\t" + str(reg[30]) + "\t" + str(reg[31]) + "\n\n")
+    f.write("data:")
 
-            if i % 7 != 0:
-                f.write(str(data[i]) + "\t")
-            else:
-                f.write("\n" + str(startDataAddress) + ":\t" + str(data[i]) + "\t")
+    for i in range(len(data)):
 
+        if i % 7 != 0:
+            f.write(str(data[i]) + "\t")
+        else:
+            f.write("\n" + str(startDataAddress) + ":\t" + str(data[i]) + "\t")
             startDataAddress += 4 * 8
+
+    f.write("\n")
+
+    f.close()
 
 
 

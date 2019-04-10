@@ -328,7 +328,7 @@ class Dissasembler:
                 arg3.append((int(instructions[i], base=2) & rdMask) >> 0)
                 arg1Str.append("\tR" + str(arg3[i]))
                 arg2Str.append(", " + str(arg2[i]))
-                arg3Str.append(", LSL " + str(arg1[i]))
+                arg3Str.append(", LSL " + str(arg1[i])*16)
                 instructionString.append(opcodeStr[i] + arg1Str[i] + arg2Str[i] + arg3Str[i])
                 instrSpaced.append(bin2StringSpacedIM(instructions[i]))
                 mempc.append(96 + (pc * 4))
@@ -454,24 +454,55 @@ class Simulator():
                 reg[arg3[index]] = reg[arg1[index]] + reg[arg2[index]]
                 printCycle(cycle, mempc[index], instructionString[index], startDataAddress)
                 local_mempc += 4
-                #break
+            # SUB
+            if instruction == 1624:
+                reg[arg3[index]] = reg[arg1[index]] - reg[arg2[index]]
+                printCycle(cycle, mempc[index], instructionString[index], startDataAddress)
+                local_mempc += 4
+            # AND
+            if instruction == 1104:
+                reg[arg3[index]] = reg[arg1[index]] & reg[arg2[index]]
+                printCycle(cycle, mempc[index], instructionString[index], startDataAddress)
+                local_mempc += 4
+            # OR
+            if instruction == 1360:
+                reg[arg3[index]] = reg[arg1[index]] | reg[arg2[index]]
+                printCycle(cycle, mempc[index], instructionString[index], startDataAddress)
+                local_mempc += 4
             # ADDI
             if 1160 <= instruction <= 1161:
                 reg[arg3[index]] = reg[arg1[index]] + arg2[index]
                 printCycle(cycle, mempc[index], instructionString[index], startDataAddress)
                 local_mempc += 4
-                #break
+            # EOR
+            if instruction == 1872:
+                reg[arg3[index]] = reg[arg1[index]] ^ reg[arg2[index]]
+                printCycle(cycle, mempc[index], instructionString[index], startDataAddress)
+                local_mempc += 4
             # SUBI
             if 1672 <= instruction <= 1673:
                 reg[arg3[index]] = reg[arg1[index]] - arg2[index]
                 printCycle(cycle, mempc[index], instructionString[index], startDataAddress)
                 local_mempc += 4
-                #break
+            # LSL
+            if instruction == 1691:
+                reg[arg3[index]] = reg[arg2[index]] << arg1[index]
+                printCycle(cycle, mempc[index], instructionString[index], startDataAddress)
+                local_mempc += 4
+            # LSR
+            if instruction == 1690:
+                reg[arg3[index]] = (reg[arg2[index]] % (1 << 64)) >> arg1[index]
+                printCycle(cycle, mempc[index], instructionString[index], startDataAddress)
+                local_mempc += 4
+            # ASR
+            if instruction == 1692:
+                reg[arg3[index]] = reg[arg2[index]] >> arg1[index]
+                printCycle(cycle, mempc[index], instructionString[index], startDataAddress)
+                local_mempc += 4
             # B
             if 160 <= instruction <= 191:
                 printCycle(cycle, mempc[index], instructionString[index], startDataAddress)
                 local_mempc += arg1[index] * 4
-                #break
             # CBZ
             if 1440 <= instruction <= 1447:
                 printCycle(cycle, mempc[index], instructionString[index], startDataAddress)
@@ -479,7 +510,6 @@ class Simulator():
                     local_mempc += arg1[index] * 4
                 else:
                     local_mempc += 4
-                #break
             # CBNZ
             if 1448 <= instruction <= 1455:
                 printCycle(cycle, mempc[index], instructionString[index], startDataAddress)
@@ -487,13 +517,19 @@ class Simulator():
                     local_mempc += arg1[index] * 4
                 else:
                     local_mempc += 4
-                #break
+            #MOVZ
+            if 1684 <= instruction <= 1687:
+                reg[arg3[index]] = reg[arg2[index]] << (arg1[index] * 16)
+                printCycle(cycle, mempc[index], instructionString[index], startDataAddress)
+                local_mempc += 4
+            #MOVK TODO finish implementation, copying and pasting 16 bits into existing regs so you must keep the other 48 bits
+            # if 1940 <= instruction <= 1943:
+            # TODO implement load and store instructions
             # BREAK
             elif instruction == 2038:
                 is_looping = False
                 printCycle(cycle, mempc[index], instructionString[index], startDataAddress)
                 print("Break")
-                #break
 
             cycle += 1
 
@@ -508,7 +544,6 @@ def printCycle(cycle, mempc, instruction_string, startDataAddress):
     else:
         f = open(outputFileName + "_sim.txt", 'a')
 
-    #with open(outputFileName + "_sim.txt", 'w+') as f:
     print ("File open")
     f.write("=" * 20 + '\n')
     f.write("cycle:"+ str(cycle) + '\t' + str(mempc) + '\t' + instruction_string + '\n\n')

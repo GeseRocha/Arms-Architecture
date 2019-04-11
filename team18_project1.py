@@ -250,6 +250,7 @@ class Dissasembler:
                 mempc.append(96 + (pc * 4))
 
             elif opcode[i] == 0:
+                opcodeStr.append("NOP")
                 arg1.append(0)
                 arg2.append(0)
                 arg3.append(0)
@@ -286,10 +287,10 @@ class Dissasembler:
 
             elif 160 <= opcode[i] <= 191:
                 opcodeStr.append("B")
-                arg1.append(int(instructions[i], base=2) & addr3Mask)
+                arg1.append(imm32Bit2ComplementToDec(immBitTo32BitConverter(int(instructions[i], base=2) & addr3Mask, 26)))
                 arg2.append(0)
                 arg3.append(0)
-                arg1Str.append("\t#" + str(imm32Bit2ComplementToDec(immBitTo32BitConverter(arg1[i], 26))))
+                arg1Str.append("\t#" + str(arg1[i]))
                 arg2Str.append('')
                 arg3Str.append('')
                 instructionString.append(opcodeStr[i] + arg1Str[i] + arg2Str[i] + arg3Str[i])
@@ -298,11 +299,11 @@ class Dissasembler:
 
             elif 1440 <= opcode[i] <= 1447:
                 opcodeStr.append("CBZ")
-                arg1.append((int(instructions[i], base=2) & addr2Mask) >> 5)
+                arg1.append(imm32Bit2ComplementToDec(immBitTo32BitConverter(((int(instructions[i], base=2) & addr2Mask) >> 5), 19)))
                 arg2.append((int(instructions[i], base=2) & rdMask) >> 0)
                 arg3.append(0)
                 arg1Str.append("\tR" + str(arg2[i]))
-                arg2Str.append(", #" + str(imm32Bit2ComplementToDec(immBitTo32BitConverter(arg1[i], 19))))
+                arg2Str.append(", #" + str(arg1[i]))
                 arg3Str.append("")
                 instructionString.append(opcodeStr[i] + arg1Str[i] + arg2Str[i] + arg3Str[i])
                 instrSpaced.append(bin2StringSpacedCB(instructions[i]))
@@ -311,10 +312,10 @@ class Dissasembler:
             elif 1448 <= opcode[i] <= 1455:
                 opcodeStr.append("CBNZ")
                 arg3.append(0)
-                arg1.append((int(instructions[i], base=2) & addr2Mask) >> 5)
+                arg1.append(imm32Bit2ComplementToDec(immBitTo32BitConverter((int(instructions[i], base=2) & addr2Mask) >> 5, 19)))
                 arg2.append((int(instructions[i], base=2) & rdMask) >> 0)
                 arg1Str.append("\tR" + str(arg2[i]))
-                arg2Str.append(", #" + str(imm32Bit2ComplementToDec(immBitTo32BitConverter(arg1[i], 19))))
+                arg2Str.append(", #" + str(arg1[i]))
                 arg3Str.append("")
                 instructionString.append(opcodeStr[i] + arg1Str[i] + arg2Str[i] + arg3Str[i])
                 instrSpaced.append(bin2StringSpacedCB(instructions[i]))
@@ -328,7 +329,7 @@ class Dissasembler:
                 arg3.append((int(instructions[i], base=2) & rdMask) >> 0)
                 arg1Str.append("\tR" + str(arg3[i]))
                 arg2Str.append(", " + str(arg2[i]))
-                arg3Str.append(", LSL " + str(arg1[i])*16)
+                arg3Str.append(", LSL " + str(arg1[i]*16))
                 instructionString.append(opcodeStr[i] + arg1Str[i] + arg2Str[i] + arg3Str[i])
                 instrSpaced.append(bin2StringSpacedIM(instructions[i]))
                 mempc.append(96 + (pc * 4))
@@ -435,7 +436,16 @@ class Simulator():
         # Initializes all 32 registers to 0
         reg = [0]*32
 
-        startDataAddress = mempc[len(mempc)-len(data)]
+
+        startDataAddressIndex = (len(mempc) - len(data)) - 1
+
+        print (startDataAddressIndex)
+        print (mempc)
+
+        if len(data) != 0:
+            startDataAddress = mempc[startDataAddressIndex]
+        else:
+            startDataAddress = mempc[startDataAddressIndex] + 4
 
 
         is_looping = True
@@ -519,12 +529,56 @@ class Simulator():
                     local_mempc += 4
             #MOVZ
             if 1684 <= instruction <= 1687:
-                reg[arg3[index]] = reg[arg2[index]] << (arg1[index] * 16)
+                reg[arg3[index]] = arg2[index] << (arg1[index] * 16)
                 printCycle(cycle, mempc[index], instructionString[index], startDataAddress)
                 local_mempc += 4
-            #MOVK TODO finish implementation, copying and pasting 16 bits into existing regs so you must keep the other 48 bits
-            # if 1940 <= instruction <= 1943:
-            # TODO implement load and store instructions
+            #MOVK
+            if 1940 <= instruction <= 1943:
+                if arg1[index] == 0:
+                    reg[arg3[index]] = (reg[arg3[index]] % (1 << 64)) >> 16
+                    reg[arg3[index]] = reg[arg3[index]] << 16
+                    reg[arg3[index]] = reg[arg3[index]] ^ arg2[index]
+
+
+                elif arg1[index] == 1:
+                    rightSplitMask = 0x000000FF
+                    rightSplit = rightSplitMask & reg[arg3[index]]
+                    leftSplit = (reg[arg3[index]] % (1 << 64)) >> 32
+                    leftShiftedSplit = leftSplit << 32
+                    immShifted = arg2[index] << 16
+
+                    reg[arg3[index]] = rightSplit ^ immShifted
+                    reg[arg3[index]] =reg[arg3[index]] ^ leftShiftedSplit
+
+                elif arg1[index] == 2:
+                    rightSplitMask = 0x0000FFFF
+                    rightSplit = rightSplitMask & reg[arg3[index]]
+                    leftSplit = (reg[arg3[index]] % (1 << 64)) >> 48
+                    leftShiftedSplit = leftSplit << 48
+                    immShifted = arg2[index] << 32
+
+                    reg[arg3[index]] = rightSplit ^ immShifted
+                    reg[arg3[index]] = reg[arg3[index]] ^ leftShiftedSplit
+
+                elif arg1[index] == 3:
+                    rightSplitMask = 0x00FFFFFF
+                    rightSplit = rightSplitMask & reg[arg3[index]]
+                    immShifted = arg2[index] << 48
+
+                    reg[arg3[index]] = rightSplit ^ immShifted
+
+                printCycle(cycle, mempc[index], instructionString[index], startDataAddress)
+                local_mempc += 4
+            # STUR
+            if instruction == 1984:
+                address = (arg3[index] * 4) + reg[arg2[index]]
+                data[address, startDataAddress] = reg[arg1[index]]
+                local_mempc += 4
+            # LDUR
+            if instruction == 1986:
+                address = (arg3[index] * 4) + reg[arg2[index]]
+                reg[arg1[index]] = data[address, startDataAddress]
+                local_mempc += 4
             # BREAK
             elif instruction == 2038:
                 is_looping = False
@@ -558,17 +612,29 @@ def printCycle(cycle, mempc, instruction_string, startDataAddress):
             + str(reg[28]) + "\t" + str(reg[29]) + "\t" + str(reg[30]) + "\t" + str(reg[31]) + "\n\n")
     f.write("data:")
 
-    for i in range(len(data)):
+    if startDataAddress != None:
+        for i in range(len(data)):
 
-        if i % 7 != 0:
-            f.write(str(data[i]) + "\t")
-        else:
-            f.write("\n" + str(startDataAddress) + ":\t" + str(data[i]) + "\t")
-            startDataAddress += 4 * 8
+            if i % 7 != 0:
+                f.write(str(data[i]) + "\t")
+            else:
+                f.write("\n" + str(startDataAddress) + ":\t" + str(data[i]) + "\t")
+                startDataAddress += 4 * 8
 
     f.write("\n")
 
     f.close()
+
+
+def getMemIndex(address, startAddress):
+
+    for i in range(len(mempc)):
+        if mempc[i] == address:
+            return (address - startAddress) / 4
+
+
+
+
 
 
 

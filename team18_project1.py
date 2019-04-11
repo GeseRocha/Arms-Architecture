@@ -361,11 +361,11 @@ class Dissasembler:
             elif opcode[i] == 1692:
                 opcodeStr.append("ASR")
                 arg1.append((int(instructions[i], base=2) & rnMask) >> 5)
-                arg2.append((int(instructions[i], base=2) & rmMask) >> 16)
+                arg2.append((int(instructions[i], base=2) & shmtMask) >> 10)
                 arg3.append((int(instructions[i], base=2) & rdMask) >> 0)
                 arg1Str.append("\tR" + str(arg3[i]))
                 arg2Str.append(", R" + str(arg1[i]))
-                arg3Str.append(", R" + str(arg2[i]))
+                arg3Str.append(", #" + str(arg2[i]))
                 instructionString.append(opcodeStr[i] + arg1Str[i] + arg2Str[i] + arg3Str[i])
                 instrSpaced.append(bin2StrSpacedRandR(instructions[i]))
                 mempc.append(96 + (pc * 4))
@@ -506,7 +506,7 @@ class Simulator():
                 local_mempc += 4
             # ASR
             if instruction == 1692:
-                reg[arg3[index]] = reg[arg2[index]] >> arg1[index]
+                reg[arg3[index]] = reg[arg1[index]] >> arg2[index]
                 printCycle(cycle, mempc[index], instructionString[index], startDataAddress)
                 local_mempc += 4
             # B
@@ -572,12 +572,18 @@ class Simulator():
             # STUR
             if instruction == 1984:
                 address = (arg3[index] * 4) + reg[arg2[index]]
-                data[address, startDataAddress] = reg[arg1[index]]
+                data[getMemIndex(address, startDataAddress)] = reg[arg1[index]]
+                printCycle(cycle, mempc[index], instructionString[index], startDataAddress)
                 local_mempc += 4
             # LDUR
             if instruction == 1986:
                 address = (arg3[index] * 4) + reg[arg2[index]]
-                reg[arg1[index]] = data[address, startDataAddress]
+                reg[arg1[index]] = data[getMemIndex(address, startDataAddress)]
+                printCycle(cycle, mempc[index], instructionString[index], startDataAddress)
+                local_mempc += 4
+            # NOP
+            if instruction == 0:
+                printCycle(cycle, mempc[index], instructionString[index], startDataAddress)
                 local_mempc += 4
             # BREAK
             elif instruction == 2038:
@@ -612,14 +618,14 @@ def printCycle(cycle, mempc, instruction_string, startDataAddress):
             + str(reg[28]) + "\t" + str(reg[29]) + "\t" + str(reg[30]) + "\t" + str(reg[31]) + "\n\n")
     f.write("data:")
 
-    if startDataAddress != None:
-        for i in range(len(data)):
 
-            if i % 7 != 0:
-                f.write(str(data[i]) + "\t")
-            else:
-                f.write("\n" + str(startDataAddress) + ":\t" + str(data[i]) + "\t")
-                startDataAddress += 4 * 8
+    for i in range(len(data)):
+
+        if i % 8 != 0:
+            f.write(str(data[i]) + "\t")
+        else:
+            f.write("\n" + str(startDataAddress) + ":\t" + str(data[i]) + "\t")
+            startDataAddress += 4 * 8
 
     f.write("\n")
 
@@ -628,9 +634,17 @@ def printCycle(cycle, mempc, instruction_string, startDataAddress):
 
 def getMemIndex(address, startAddress):
 
-    for i in range(len(mempc)):
-        if mempc[i] == address:
-            return (address - startAddress) / 4
+
+    index = (address - startAddress) / 4
+
+    if index > len(data):
+        fullIndex = (index % 7) + index + 1
+        for i in range(fullIndex - len(data)):
+            data.append(0)
+
+
+    return index
+
 
 
 

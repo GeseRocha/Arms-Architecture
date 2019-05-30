@@ -16,6 +16,8 @@ addr3Mask = 0x3FFFFFF # addr for B format
 imsftMask = 0x600000  # shift for IM format
 imdataMask = 0x1FFFE0  # data for IM type
 # last5Mask = 0x7C0
+tagMask = 4294967264  # tag for cache
+setMask = 24 # set for cache
 
 
 # containers for instructions
@@ -34,9 +36,36 @@ mempc = []
 reg = []
 instructionString = []
 
+# containers for simulator
+reg = [0] * 32
+    # containers for cache
+cacheSets = [[[0,0,0,0,0],[0,0,0,0,0]],
+             [[0,0,0,0,0],[0,0,0,0,0]],
+             [[0,0,0,0,0],[0,0,0,0,0]],
+             [[0,0,0,0,0],[0,0,0,0,0]]]
+justMissedList = []
+LruBit = [0,0,0,0]
+
+preIssueBuff = [0,0,0,0] # list of 4 instr indexes
+preAluBuff = [-1,-1] # 1st is instr index, 2nd is instr index
+preMemBuff = [-1,-1]
+
+postAluBuff = [-1,-1] #1st number is value, 2nd is instr index
+postMemBuff = [-1,-1]
+
+dest = []
+src1 = []
+src2 = []
+
 #file names
 outputFileName = ''
 inputFileName = ''
+
+inputFileName = 'R_type_test.txt'
+outputFileName = 'R_type_test_output'
+
+instructions = [line.rstrip() for line in open(inputFileName, 'rb')]
+
 
 def bin2StrSpacedRandR(s):
     spacedStr = s[0:11] + " " + s[11:16] + " " + s[16:22] + " " + s[22:27] + " " + s[27:32]
@@ -142,12 +171,7 @@ class Dissasembler:
         #         outputFileName = sys.argv[i + 1]
 
         # This is for testing only
-        inputFileName = 'R_type_test.txt'
-        outputFileName = 'R_type_test_output'
-
-
-
-        instructions = [line.rstrip() for line in open(inputFileName, 'rb')]
+        
 
         # Translating instructions
         for i in range(len(instructions)):
@@ -160,6 +184,9 @@ class Dissasembler:
                 arg1.append((int(instructions[i], base=2) & rnMask) >> 5)
                 arg2.append((int(instructions[i], base=2) & rmMask) >> 16)
                 arg3.append((int(instructions[i], base=2) & rdMask) >> 0)
+                dest.append(arg3[i])
+                src1.append(arg1[i])
+                src2.append(arg2[i])
                 arg1Str.append("\tR" + str(arg3[i]))
                 arg2Str.append(", R" + str(arg1[i]))
                 arg3Str.append(", R" + str(arg2[i]))
@@ -173,6 +200,9 @@ class Dissasembler:
                 arg1.append((int(instructions[i], base=2) & rnMask) >> 5)
                 arg2.append((int(instructions[i], base=2) & rmMask) >> 16)
                 arg3.append((int(instructions[i], base=2) & rdMask) >> 0)
+                dest.append(arg3[i])
+                src1.append(arg1[i])
+                src2.append(arg2[i])
                 arg1Str.append("\tR" + str(arg3[i]))
                 arg2Str.append(", R" + str(arg1[i]))
                 arg3Str.append(", R" + str(arg2[i]))
@@ -185,6 +215,9 @@ class Dissasembler:
                 arg1.append((int(instructions[i], base=2) & rnMask) >> 5)
                 arg2.append((int(instructions[i], base=2) & rmMask) >> 16)
                 arg3.append((int(instructions[i], base=2) & rdMask) >> 0)
+                dest.append(arg3[i])
+                src1.append(arg1[i])
+                src2.append(arg2[i])
                 arg1Str.append("\tR" + str(arg3[i]))
                 arg2Str.append(", R" + str(arg1[i]))
                 arg3Str.append(", R" + str(arg2[i]))
@@ -197,6 +230,9 @@ class Dissasembler:
                 arg1.append((int(instructions[i], base=2) & rnMask) >> 5)
                 arg2.append((int(instructions[i], base=2) & rmMask) >> 16)
                 arg3.append((int(instructions[i], base=2) & rdMask) >> 0)
+                dest.append(arg3[i])
+                src1.append(arg1[i])
+                src2.append(arg2[i])
                 arg1Str.append("\tR" + str(arg3[i]))
                 arg2Str.append(", R" + str(arg1[i]))
                 arg3Str.append(", R" + str(arg2[i]))
@@ -210,6 +246,9 @@ class Dissasembler:
                 arg1.append((int(instructions[i], base=2) & rnMask) >> 5)
                 arg2.append((int(instructions[i], base=2) & imMask) >> 10)
                 arg3.append((int(instructions[i], base=2) & rdMask) >> 0)
+                dest.append(arg3[i])
+                src1.append(arg1[i])
+                src2.append(arg2[i])
                 arg1Str.append("\tR" + str(arg3[i]))
                 arg2Str.append(", R" + str(arg1[i]))
                 arg3Str.append(", #" + str(arg2[i]))
@@ -222,6 +261,9 @@ class Dissasembler:
                 arg1.append((int(instructions[i], base=2) & rnMask) >> 5)
                 arg2.append((int(instructions[i], base=2) & imMask) >> 10)
                 arg3.append((int(instructions[i], base=2) & rdMask) >> 0)
+                dest.append(arg3[i])
+                src1.append(arg1[i])
+                src2.append(arg2[i])
                 arg1Str.append("\tR" + str(arg3[i]))
                 arg2Str.append(", R" + str(arg1[i]))
                 arg3Str.append(", #" + str(arg2[i]))
@@ -234,6 +276,9 @@ class Dissasembler:
                 arg1.append((int(instructions[i], base=2) & rdMask) >> 0)
                 arg2.append((int(instructions[i], base=2) & rnMask) >> 5)
                 arg3.append((int(instructions[i], base=2) & addrMask) >> 12)
+                dest.append(arg2[i])
+                src1.append(arg1[i])
+                src2.append(arg3[i])
                 arg1Str.append("\tR" + str(arg1[i]))
                 arg2Str.append(", [R" + str(arg2[i]))
                 arg3Str.append(", #" + str(arg3[i]) + "]")
@@ -246,6 +291,9 @@ class Dissasembler:
                 arg1.append((int(instructions[i], base=2) & rdMask) >> 0)
                 arg2.append((int(instructions[i], base=2) & rnMask) >> 5)
                 arg3.append((int(instructions[i], base=2) & addrMask) >> 12)
+                dest.append(arg1[i])
+                src1.append(arg2[i])
+                src2.append(arg3[i])
                 arg1Str.append("\tR" + str(arg1[i]))
                 arg2Str.append(", [R" + str(arg2[i]))
                 arg3Str.append(", #" + str(arg3[i]) + "]")
@@ -258,6 +306,9 @@ class Dissasembler:
                 arg1.append(0)
                 arg2.append(0)
                 arg3.append(0)
+                dest.append(arg3[i])
+                src1.append(arg1[i])
+                src2.append(arg2[i])
                 arg1Str.append("")
                 arg2Str.append("")
                 arg3Str.append("")
@@ -270,6 +321,9 @@ class Dissasembler:
                 arg1.append((int(instructions[i], base=2) & shmtMask) >> 10)
                 arg2.append((int(instructions[i], base=2) & rnMask) >> 5)
                 arg3.append((int(instructions[i], base=2) & rdMask) >> 0)
+                dest.append(arg3[i])
+                src1.append(arg2[i])
+                src2.append(arg1[i])
                 arg1Str.append("\tR" + str(arg3[i]))
                 arg2Str.append(", R" + str(arg2[i]))
                 arg3Str.append(", #" + str(arg1[i]))
@@ -282,6 +336,9 @@ class Dissasembler:
                 arg1.append((int(instructions[i], base=2) & shmtMask) >> 10)
                 arg2.append((int(instructions[i], base=2) & rnMask) >> 5)
                 arg3.append((int(instructions[i], base=2) & rdMask) >> 0)
+                dest.append(arg3[i])
+                src1.append(arg2[i])
+                src2.append(arg1[i])
                 arg1Str.append("\tR" + str(arg3[i]))
                 arg2Str.append(", R" + str(arg2[i]))
                 arg3Str.append(", #" + str(arg1[i]))
@@ -294,6 +351,9 @@ class Dissasembler:
                 arg1.append(imm32Bit2ComplementToDec(immBitTo32BitConverter(int(instructions[i], base=2) & addr3Mask, 26)))
                 arg2.append(0)
                 arg3.append(0)
+                dest.append(arg1[i])
+                src1.append(arg2[i])
+                src2.append(arg3[i])
                 arg1Str.append("\t#" + str(arg1[i]))
                 arg2Str.append('')
                 arg3Str.append('')
@@ -306,6 +366,9 @@ class Dissasembler:
                 arg1.append(imm32Bit2ComplementToDec(immBitTo32BitConverter(((int(instructions[i], base=2) & addr2Mask) >> 5), 19)))
                 arg2.append((int(instructions[i], base=2) & rdMask) >> 0)
                 arg3.append(0)
+                dest.append(arg2[i])
+                src1.append(arg1[i])
+                src2.append(arg3[i])
                 arg1Str.append("\tR" + str(arg2[i]))
                 arg2Str.append(", #" + str(arg1[i]))
                 arg3Str.append("")
@@ -318,6 +381,9 @@ class Dissasembler:
                 arg3.append(0)
                 arg1.append(imm32Bit2ComplementToDec(immBitTo32BitConverter((int(instructions[i], base=2) & addr2Mask) >> 5, 19)))
                 arg2.append((int(instructions[i], base=2) & rdMask) >> 0)
+                dest.append(arg2[i])
+                src1.append(arg1[i])
+                src2.append(arg3[i])
                 arg1Str.append("\tR" + str(arg2[i]))
                 arg2Str.append(", #" + str(arg1[i]))
                 arg3Str.append("")
@@ -331,6 +397,9 @@ class Dissasembler:
                 arg1.append((int(instructions[i], base=2) & imsftMask) >> 21)
                 arg2.append((int(instructions[i], base=2) & imdataMask) >> 5)
                 arg3.append((int(instructions[i], base=2) & rdMask) >> 0)
+                dest.append(arg3[i])
+                src1.append(arg2[i])
+                src2.append(arg1[i])
                 arg1Str.append("\tR" + str(arg3[i]))
                 arg2Str.append(", " + str(arg2[i]))
                 arg3Str.append(", LSL " + str(arg1[i]*16))
@@ -343,6 +412,9 @@ class Dissasembler:
                 arg1.append((int(instructions[i], base=2) & imsftMask) >> 21)
                 arg2.append((int(instructions[i], base=2) & imdataMask) >> 5)
                 arg3.append((int(instructions[i], base=2) & rdMask) >> 0)
+                dest.append(arg3[i])
+                src1.append(arg2[i])
+                src2.append(arg1[i])
                 arg1Str.append("\tR" + str(arg3[i]))
                 arg2Str.append(", " + str(arg2[i]))
                 arg3Str.append(", LSL " + str(arg1[i]*16))
@@ -355,6 +427,9 @@ class Dissasembler:
                 arg1.append((int(instructions[i], base=2) & rnMask) >> 5)
                 arg2.append((int(instructions[i], base=2) & rmMask) >> 16)
                 arg3.append((int(instructions[i], base=2) & rdMask) >> 0)
+                dest.append(arg3[i])
+                src1.append(arg1[i])
+                src2.append(arg2[i])
                 arg1Str.append("\tR" + str(arg3[i]))
                 arg2Str.append(", R" + str(arg1[i]))
                 arg3Str.append(", R" + str(arg2[i]))
@@ -367,6 +442,9 @@ class Dissasembler:
                 arg1.append((int(instructions[i], base=2) & rnMask) >> 5)
                 arg2.append((int(instructions[i], base=2) & shmtMask) >> 10)
                 arg3.append((int(instructions[i], base=2) & rdMask) >> 0)
+                dest.append(arg3[i])
+                src1.append(arg1[i])
+                src2.append(arg2[i])
                 arg1Str.append("\tR" + str(arg3[i]))
                 arg2Str.append(", R" + str(arg1[i]))
                 arg3Str.append(", #" + str(arg2[i]))
@@ -379,6 +457,9 @@ class Dissasembler:
                 arg1.append(0)
                 arg2.append(0)
                 arg3.append(0)
+                dest.append(arg3[i])
+                src1.append(arg1[i])
+                src2.append(arg2[i])
                 arg1Str.append("")
                 arg2Str.append("")
                 arg3Str.append("")
@@ -420,6 +501,4 @@ dissme.run()
 
 
 def accessMem(testNum):
-    return testNum + 1
-
-
+    return 0

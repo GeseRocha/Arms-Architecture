@@ -124,8 +124,8 @@ class Dissasembler:
         global arg1Str
         global arg2Str
         global arg3Str
-        global mem
-        global binMem
+        #global mem
+        #global binMem
         global opcode
         global mempc
         global instructionString
@@ -134,12 +134,16 @@ class Dissasembler:
 
         pc = 0
 
-        for i in range(len(sys.argv)):
-            if (sys.argv[i] == '-i' and i < (len(sys.argv) - 1)):
-                inputFileName = sys.argv[i + 1]
-                print(inputFileName)
-            elif (sys.argv[i] == '-o' and i < (len(sys.argv) - 1)):
-                outputFileName = sys.argv[i + 1]
+        # for i in range(len(sys.argv)):
+        #     if (sys.argv[i] == '-i' and i < (len(sys.argv) - 1)):
+        #         inputFileName = sys.argv[i + 1]
+        #         print(inputFileName)
+        #     elif (sys.argv[i] == '-o' and i < (len(sys.argv) - 1)):
+        #         outputFileName = sys.argv[i + 1]
+
+        # This is for testing only
+        inputFileName = 'R_type_test.txt'
+        outputFileName = 'R_type_test_output'
 
 
 
@@ -412,5 +416,10 @@ dissme = Dissasembler()
 dissme.run()
 
 
+
+
+
+def accessMem(testNum):
+    return testNum + 1
 
 

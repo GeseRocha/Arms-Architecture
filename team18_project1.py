@@ -44,7 +44,7 @@ cacheSets = [[[0,0,0,0,0],[0,0,0,0,0]],
              [[0,0,0,0,0],[0,0,0,0,0]],
              [[0,0,0,0,0],[0,0,0,0,0]]]
 justMissedList = []
-LruBit = [0,0,0,0]
+lruBit = [0,0,0,0]
 
 preIssueBuff = [0,0,0,0] # list of 4 instr indexes
 preAluBuff = [-1,-1] # 1st is instr index, 2nd is instr index
@@ -490,15 +490,143 @@ class Dissasembler:
                 f.write("\t" + str(data[i]))
                 f.write("\n")
 
-        print(outputFileName)
 
 
 dissme = Dissasembler()
 dissme.run()
 
 
+# Helper function to find address
+def getIndexOfMemAddress(address, numInstructions):
+
+    # gets index from mempc
+    try:
+        index = mempc.index(address)
+    except ValueError:
+        return -1
+    
+    # if instruction then index is the same
+    if index < numInstructions:
+        return index
+    # if data then index is align for data list
+    else:
+        return index - numInstructions
 
 
+# Input changes based on what is being passed in. If instruction then mem index is set to -1, vice versa. Other two are for Writing to mem(STUR Instruction)
+def accessMem(memIndex, instructionIndex, isWriteToMem, dataToWrite):
 
-def accessMem(testNum):
-    return 0
+    numInstructions = len(opcode)
+
+    # Dealing with an instruction so we find the relative address of the intrucions
+    if(memIndex == -1):
+        addressLocal = 96 + (4 * instructionIndex)
+    # Dealing with Data so we find the relative address of the Data 
+    else:
+        addressLocal = 96 + (4 * numInstructions) + (4 * memIndex)
+
+    # Getting the address for both words
+    if addressLocal % 8 == 0:
+        dataWord = 0 # block 0 was the address
+        address1 = addressLocal
+        address2 = addressLocal + 4
+    if addressLocal % 8 != 0:
+        dataWord = 0 # block 1 was the address
+        address1 = addressLocal - 4
+        address2 = addressLocal
+    
+    # Getting data for both words
+        # Word 0
+    if address1 < 96 + (4 * numInstructions): # For Instruction
+        data1 = instructions[getIndexOfMemAddress(address1, numInstructions)]
+    else: # For Data
+        data1 = data[getIndexOfMemAddress(address1, numInstructions)]
+        # Word 1
+    if address2 < 96 + (4 * numInstructions): # For Instruction
+        data2 = instructions[getIndexOfMemAddress(address2, numInstructions)]
+    else: # For Data
+        data2 = data[getIndexOfMemAddress(address2, numInstructions)]
+
+    
+    # For when we Write to Mem. Select which word to write
+    if isWriteToMem and dataWord == 0:
+        data1 = dataToWrite
+    elif isWriteToMem and dataWord == 1:
+        data2 = dataToWrite
+
+    # Getting the set and tag(block), we only care about the first word
+    setNum = (address1 & setMask) >> 3
+    tag = (address1 & tagMask) >> 5
+
+    # Look at cache container. We check the valid bit and the tag
+        # Block 0
+    hit = False
+    if (cacheSets[setNum][0][0] == 1 and cacheSets[setNum][0][2] == tag):
+        # We have a hit
+        hit = True
+        assocblock = 0 # block zero is the hit
+    elif cacheSets[setNum][1][0] == 1 and cacheSets[setNum][1][2] == tag:
+        # We have a hit
+        hit = True
+        assocblock = 1 # block one is the hit
+    
+
+    # If hit, update the LRU and if we have a write to memory we update the dirty bit and return
+    if hit:
+        if hit and isWriteToMem: # hit and writ to data mem instruction
+            cacheSets[setNum][assocblock][1] = 1 # update the dirty bit of the block that had the hit
+            lruBit[setNum] = (assocblock + 1) % 2 # update lru bit
+            cacheSets[setNum][assocblock][dataWord+3] = dataToWrite # updates the word with new data. +3 is used for offset
+        elif hit:
+            lruBit[setNum] = (assocblock + 1) % 2 # update lru bit
+        
+        return [True, cacheSets[setNum][assocblock][dataWord + 3]] # return true for hit and the data inside the specific word
+    
+    # We have a miss if we make it this far
+    if address1 in justMissedList: # address was missed in the last cycle
+        # remove address from list
+        while justMissedList.count(address1) > 0:
+            justMissedList.remove(address1)
+        
+        # need to write back to memory
+        if cacheSets[setNum][lruBit[setNum]][1] == 1:
+            wbAddr = cacheSets[setNum][lruBit[setNum]][2] # tag 
+            # drop the 2 lower bits to get original address
+            wbAddr = (wbAddr << 5) + (setNum << 3)
+
+            # write back to main memory for both words
+            if wbAddr >= (numInstructions * 4) + 96:
+                data[getIndexOfMemAddress(wbAddr, numInstructions)] = cacheSets[setNum][lruBit[setNum]][3]
+            
+            if wbAddr + 4 >= (numInstructions * 4) + 96:
+                data[getIndexOfMemAddress(wbAddr + 4, numInstructions)] = cacheSets[setNum][lruBit[setNum]][4]
+            
+        # update cache flags
+        cacheSets[setNum][lruBit[setNum]][0] = 1 # valid bit
+        cacheSets[setNum][lruBit[setNum]][1] = 0 # reset dirty bit
+
+        # if instruction is write to mem we have to set the dirty bit back to 1
+        if (isWriteToMem):
+            cacheSets[setNum][lruBit[setNum]][1] = 1
+        
+        # update both words int the block
+        cacheSets[setNum][lruBit[setNum]][2] = tag # tag
+        cacheSets[setNum][lruBit[setNum]][3] = data1 # word 0
+        cacheSets[setNum][lruBit[setNum]][4] = data2 # word 1
+        lruBit[setNum] = (lruBit[setNum] + 1) % 2 # sets lru to opposite
+
+        return [True, cacheSets[setNum][(lruBit[setNum] + 1) % 2][dataWord + 3]]
+    
+    else: # new missed address
+        if justMissedList.count(address1) == 0: # add t just missed list so that in the next cycle it can be processed
+            justMissedList.append(address1)
+        return [False, 0]
+
+            
+
+
+            
+
+
+    
+    

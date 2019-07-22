@@ -46,7 +46,7 @@ cacheSets = [[[0,0,0,0,0],[0,0,0,0,0]],
 justMissedList = []
 lruBit = [0,0,0,0]
 
-preIssueBuff = [0,0,0,0] # list of 4 instr indexes
+preIssueBuff = [-1,-1,-1,-1] # list of 4 instr indexes
 preAluBuff = [-1,-1] # 1st is instr index, 2nd is instr index
 preMemBuff = [-1,-1]
 
@@ -56,6 +56,9 @@ postMemBuff = [-1,-1]
 dest = []
 src1 = []
 src2 = []
+fetchPC = 96
+dataSwitch = True #use to determine if instruction or data are being fetched
+clearCounter = 0
 
 #file names
 outputFileName = ''
@@ -153,8 +156,6 @@ class Dissasembler:
         global arg1Str
         global arg2Str
         global arg3Str
-        #global mem
-        #global binMem
         global opcode
         global mempc
         global instructionString
@@ -615,6 +616,7 @@ def accessMem(memIndex, instructionIndex, isWriteToMem, dataToWrite):
         cacheSets[setNum][lruBit[setNum]][4] = data2 # word 1
         lruBit[setNum] = (lruBit[setNum] + 1) % 2 # sets lru to opposite
 
+        # gives us the word of the instruction we asked for not instruction + 1
         return [True, cacheSets[setNum][(lruBit[setNum] + 1) % 2][dataWord + 3]]
     
     else: # new missed address
@@ -622,11 +624,437 @@ def accessMem(memIndex, instructionIndex, isWriteToMem, dataToWrite):
             justMissedList.append(address1)
         return [False, 0]
 
+
+# Helper function to check if the instructions is a load or store instruction
+def isMemOp(index):
+       if opcode[index] == 1986 or opcode[index]== 1984:
+           return True
+
+
+# TODO Add hazzards for load and store instructions
+# Issue Unit
+class issueUnit:
+    global preIssueBuff
+    global preAluBuff
+    global postAluBuff
+    global preMemBuff
+    global postMemBuff
+    global src1
+    global src2
+    global dest
+
+    def run(self):
+
+        numIssued = 0 # number of issued instructions
+        curr = 0 # current instruction we are analysing for hazards
+        numInPreIssueBuff = len(preIssueBuff) - preIssueBuff.count(-1)
+
+        
+        while numIssued < 2 and numInPreIssueBuff > 0 and curr < 4:
+            index = preIssueBuff[curr]
+            issueMe = True
+
+            # Checks for structural hazards
+            if isMemOp(index):
+                if -1 not in preMemBuff:
+                    issueMe = False
+            else:
+                if -1 not in preAluBuff:
+                    issueMe = False
             
-
-
+            for i in range(0, curr):
+                if dest[index] == dest[preIssueBuff[i]]:
+                    issueMe = False
+                    break # WAW Hazard found in preIssue
+            if isMemOp(index):
+                for i in range(0, len(preMemBuff)):
+                    if preMemBuff[i] != -1:
+                        if dest[index] == dest[preMemBuff[i]]:
+                            issueMe = False
+                            break  # WAW Hazard found in preMem
+            if not isMemOp(index):
+                for i in range(0, len(preAluBuff)):
+                    if preAluBuff[i] != -1:
+                        if dest[index] == dest[preAluBuff[i]]:
+                            issueMe = False
+                            break  # WAW Hazard found in preAlu
+            for i in range(0, curr):
+                if src1[index] == dest[preIssueBuff[i]] or src2 == dest[preIssueBuff[i]]:
+                    issueMe = False
+                    break # RAW Hazard found in preIssue
+            if isMemOp(index):
+                for i in range(0, len(preMemBuff)):
+                    if preMemBuff[i] != -1:
+                        if src1[index] == dest[preMemBuff[i]] or src2[index] == dest[preMemBuff[i]]:
+                            issueMe = False
+                            break  # RAW Hazard found in preMem
+            if not isMemOp(index):
+                for i in range(0, len(preAluBuff)):
+                    if preAluBuff[i] != -1:
+                        if src1[index] == dest[preAluBuff[i]] or src2[index] == dest[preAluBuff[i]]:
+                            issueMe = False
+                            break  # RAW Hazard found in preAlu
+            if isMemOp(index):
+                # for i in range(0,len(postMemBuff)):
+                #     if postMemBuff[i] != -1:
+                #         if src1[index] == dest[postMemBuff[0]] or src2[index] == dest[postMemBuff[1]]:
+                #             issueMe = False
+                #             break  # RAW Hazard found in postMem
+                if postMemBuff[1] != -1:
+                    if src1[index] == dest[postMemBuff[1]] or src2[index] == dest[postMemBuff[1]]:
+                        issueMe = False
+                        break  # RAW Hazard found in postMem
+            if not isMemOp(index):
+                # for i in range(0, len(postAluBuff)):
+                #     if postAluBuff[i] != -1:
+                #         if src1[index] == dest[preAluBuff[0]] or src2[index] == dest[preAluBuff[1]]:
+                #             issueMe = False
+                #             break  # RAW Hazard found in postAlu
+                if postAluBuff[1] != -1:
+                        if src1[index] == dest[postAluBuff[1]] or src2[index] == dest[postAluBuff[1]]:
+                            issueMe = False
+                            break  # RAW Hazard found in postAlu
             
+            # TODO Deal with store instruction being before load instructions
+
+            if issueMe:
+                numIssued += 1
+                # copy the instruction from preIssue to either preMem or preAlu
+                if isMemOp(index):
+                    preMemBuff[preMemBuff.index(-1)] = index
+                else:
+                    preAluBuff[preAluBuff.index(-1)] = index
 
 
+                # preIssueBuff[0:curr] = preIssueBuff[0:curr]
+                # print"pre " + str(preIssueBuff[curr+1])
+                preIssueBuff[curr:3] = preIssueBuff[curr+1:] # shifts elements left overwriting curr
+                preIssueBuff[3] = -1 # sets the last element to empty 
+                numInPreIssueBuff -= 1 
+            else:
+                curr += 1 # skips current instruction and checks the next instruction
+
+
+# Write Back Unit
+class writeBack:
+
+    global postAluBuff
+    global postMemBuff
+    global reg
+    global dest 
+
+    def run(self):
+        if postAluBuff[1] != -1:
+            reg[dest[postAluBuff[1]]] = postAluBuff[0]
+            postAluBuff[0] = -1
+            postAluBuff[1] = -1
+        if postMemBuff[1] != -1:
+            reg[dest[postAluBuff[1]]] = postMemBuff[0]
+            postMemBuff[0] = -1
+            postMemBuff[1] = -1
+
+
+# ALU Unit
+class ALU:
     
     
+
+    def run(self):
+        global preAluBuff
+        global postAluBuff
+        global arg1
+        global arg2
+
+        # opcode of instruction we are looking at
+        instruction = 0
+
+        # Checks to see whats in preBuff and updates it
+        if preAluBuff[0] != -1:
+            instruction = opcode[preAluBuff[0]]
+            index = preAluBuff[0]
+            if preAluBuff[1] != -1:
+                preAluBuff[0] = preAluBuff[1]
+                preAluBuff[1] = -1
+            else:
+                preAluBuff[0] = -1
+            
+            postAluBuff[1] = index
+        
+         # ADD
+        if instruction == 1112:
+            postAluBuff[0] = reg[int(arg1[index])] + reg[int(arg2[index])]
+
+        # SUB
+        if instruction == 1624:
+            postAluBuff[0] = reg[int(arg1[index])] - reg[int(arg2[index])]
+
+        # AND
+        if instruction == 1104:
+            postAluBuff[0] = reg[int(arg1[index])] & reg[int(arg2[index])]
+
+        # OR
+        if instruction == 1360:
+            postAluBuff[0] = reg[int(arg1[index])] | reg[int(arg2[index])]
+
+        # ADDI
+        if 1160 <= instruction <= 1161:
+            postAluBuff[0] = reg[int(arg1[index])] + int(arg2[index])
+
+        # EOR
+        if instruction == 1872:
+            postAluBuff[0] = reg[int(arg1[index])] ^ reg[int(arg2[index])]
+
+        # SUBI
+        if 1672 <= instruction <= 1673:
+            postAluBuff[0] = reg[int(arg1[index])] - int(arg2[index])
+
+        # LSL
+        if instruction == 1691:
+            postAluBuff[0] = reg[int(arg2[index])] << int(arg1[index])
+
+        # LSR
+        if instruction == 1690:
+            postAluBuff[0] = (reg[int(arg2[index])] % (1 << 64)) >> int(arg1[index])
+
+        # ASR
+        if instruction == 1692:
+            postAluBuff[0] = reg[int(arg1[index])] >> int(arg2[index])
+
+        # MOVZ
+        if 1684 <= instruction <= 1687:
+            postAluBuff[0] = int(arg2[index]) << (int(arg1[index] * 16))
+
+        # MOVK
+        if 1940 <= instruction <= 1943:
+            if arg1[index] == 0:
+                postAluBuff[0] = (reg[arg3[index]] % (1 << 64)) >> 16
+                postAluBuff[0] = reg[arg3[index]] << 16
+                postAluBuff[0] = int(reg[arg3[index]] ^ arg2[index])
+
+
+            elif arg1[index] == 1:
+                rightSplitMask = 0x000000FF
+                rightSplit = rightSplitMask & reg[arg3[index]]
+                leftSplit = (reg[arg3[index]] % (1 << 64)) >> 32
+                leftShiftedSplit = leftSplit << 32
+                immShifted = arg2[index] << 16
+
+                postAluBuff[0] = rightSplit ^ immShifted
+                postAluBuff[0] = int(reg[arg3[index]] ^ leftShiftedSplit)
+
+            elif arg1[index] == 2:
+                rightSplitMask = 0x0000FFFF
+                rightSplit = rightSplitMask & reg[arg3[index]]
+                leftSplit = (reg[arg3[index]] % (1 << 64)) >> 48
+                leftShiftedSplit = leftSplit << 48
+                immShifted = arg2[index] << 32
+
+                postAluBuff[0] = rightSplit ^ immShifted
+                postAluBuff[0] = int(reg[arg3[index]] ^ leftShiftedSplit)
+
+            elif arg1[index] == 3:
+                rightSplitMask = 0x00FFFFFF
+                rightSplit = rightSplitMask & reg[arg3[index]]
+                immShifted = arg2[index] << 48
+
+                postAluBuff[0] = int(rightSplit ^ immShifted)
+        
+
+# Fetch Unit
+class fetchUnit:
+    
+
+    def run(self):
+        global fetchPC
+        global dataSwitch
+        global preIssueBuff
+        global opcode
+        global mempc
+        global clearCounter
+
+        # TODO: Will have to refactor for data
+
+        # instruction I'm currently looking at
+        if fetchPC in mempc:
+            instructionIndex = mempc.index(fetchPC)
+
+        # Fetching instructions/Data
+        if dataSwitch:
+
+            # access cache TODO: May have to check for outlier case after BREAK PC may go out of bound
+            # for now we won't use [1] the data it returns
+            # TODO: Figure out how to deal with data
+            cacheFetch = accessMem(-1, instructionIndex, 0, 0)
+        
+
+            # if cache misses we stall and return to simulator
+            if cacheFetch[0] == False:
+                return True
+
+            # Check to see if we have space in preIssueBuffer
+            if -1 in preIssueBuff:
+
+                # Check for branch instructionsf
+                if 160 <= opcode[instructionIndex] <= 191:
+                    return True
+                    # TODO: figure this shit out. Don't have to check for hazard
+                if 1440 <= opcode[instructionIndex] <= 1447 or 1448 <= opcode[instructionIndex] <= 1455:
+                    return True
+                    # TODO: figure this shit out as well. Have to check for hazard
+
+                # Check for break
+                # if opcode[instructionIndex] == 2038 or opcode[instructionIndex + 1] == 2038:
+                #     # update PC and switch to data
+                #     fetchPC += 8
+                #     dataSwitch = False
+                #     return True
+                # else:
+                # Two or more spaces available in preIssueBuffer
+                if preIssueBuff.count(-1) > 1:
+                    # Check for NOP
+                    if opcode[instructionIndex] == 0:
+                        
+                        if opcode[instructionIndex + 1] == 0: # Both instructions are NOP
+                            fetchPC += 8
+                            return True
+
+                        # Only the firt one is NOP
+                        # Check for break
+                        if opcode[instructionIndex + 1] == 2038:
+                            fetchPC += 8
+                            dataSwitch = False
+                            return True
+                        else:
+                            preIssueBuff[preIssueBuff.index(-1)] = instructionIndex + 1
+                            fetchPC += 8
+                            return True
+
+                    elif opcode[instructionIndex + 1] == 0:
+                        # Scond one is NOP
+                        preIssueBuff[preIssueBuff.index(-1)] = instructionIndex
+                        fetchPC += 8
+                        return True
+                    else:
+                        # No NOP
+                        if opcode[instructionIndex + 1] == 2038:
+                            preIssueBuff[preIssueBuff.index(-1)] = instructionIndex
+                            fetchPC += 8
+                            dataSwitch = False
+                            return True
+                        else: 
+                            preIssueBuff[preIssueBuff.index(-1)] = instructionIndex
+                            preIssueBuff[preIssueBuff.index(-1)] = instructionIndex + 1
+                            fetchPC += 8
+                            return True
+                else:
+                    # Check for NOP
+                    if opcode[instructionIndex] == 0:
+                        
+                        if opcode[instructionIndex + 1] == 0: # Both instructions are NOP
+                            fetchPC += 8
+                            return True
+
+                        # Only the firt one is NOP
+                        if opcode[instructionIndex + 1] == 2038:
+                            fetchPC += 8
+                            dataSwitch = False
+                            return True
+                        else:
+                            preIssueBuff[preIssueBuff.index(-1)] = instructionIndex + 1
+                            fetchPC += 8
+                            return True
+
+                    elif opcode[instructionIndex + 1] == 0:
+                        # Scond one is NOP
+                        preIssueBuff[preIssueBuff.index(-1)] = instructionIndex
+                        fetchPC += 8
+                        return True
+                    else:
+                        # None are NOP, fetch the first instruction
+                        if opcode[instructionIndex + 1] == 2038:
+                            preIssueBuff[preIssueBuff.index(-1)] = instructionIndex
+                            fetchPC += 8
+                            dataSwitch = False
+                            return True
+                        else:
+                            preIssueBuff[preIssueBuff.index(-1)] = instructionIndex
+                            fetchPC += 4
+                            return True
+            else:
+                return True
+        else:
+            # TODO: Do data stuff
+
+            instructionsProcessed = True
+            
+
+            for i in range(len(preIssueBuff)):
+                if preIssueBuff[i] != -1:
+                    instructionsProcessed = False
+
+            for i in range(len(preAluBuff)):
+                if preAluBuff[i] != -1:
+                    instructionsProcessed = False
+                if preMemBuff[i] != -1:
+                    instructionsProcessed = False
+            
+            if instructionsProcessed:
+                clearCounter += 1
+                # All instruction are finished and we have a clear output
+                if clearCounter == 2:
+                    return False
+            else:
+                return True
+        
+        return True
+        
+
+class Simmulator:
+
+    # Units to process instructions
+    
+
+    def run(self):
+        global arg1
+
+        iu = issueUnit()
+        wb = writeBack()
+        alu = ALU()
+        fu = fetchUnit()
+        cycle = 1
+        go = True
+
+        while go:
+            wb.run()
+            alu.run()
+            iu.run()
+            go = fu.run()
+            self.printState(cycle)
+            cycle += 1
+
+    
+    def printState(self, cycle):
+
+        global preIssueBuff
+        global preAluBuff
+        global preMemBuff
+        global postAluBuff 
+        global postMemBuff
+        global cacheSets
+        global reg
+
+        
+        print("Cycle: " + str(cycle) + "\n")
+        print("Pre-Issue Buffer: " + str(preIssueBuff) + "\n")
+        print("Pre_ALU Queue: " + str(preAluBuff) + "\n")
+        print("Post_ALU Queue: " + str(postAluBuff) + "\n")
+        print("Pre_MEM Queue: " + str(preMemBuff) + "\n")
+        print("Post_MEM Queue: " + str(postMemBuff) + "\n")
+        print("Reg: " + str(reg) + "\n")
+        print("Cache: " + str(cacheSets) + "\n")
+        
+
+
+
+sim = Simmulator()
+sim.run()

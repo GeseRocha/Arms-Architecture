@@ -3,6 +3,7 @@ import team18_project1
 # def test_initial():
 #     assert team18_project1.accessMem(1) == 2
 
+# Tests R instructions
 def test_rType_instructions():
 
     results = team18_project1.accessMem(-1, 0, 0, 0)
@@ -29,6 +30,7 @@ def test_rType_instructions():
 
     print team18_project1.cacheSets
 
+# TODO test memory instructions
 
 
 
